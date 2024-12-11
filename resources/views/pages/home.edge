@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>
+      AdonisJS
+    </title>
+
+    <link
+
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+  </head>
+  <body class="min-h-screen w-screen font-sans">
+ 
+  @if(auth.user)
+    <p> Welcome back, {{auth.user.fullName}} </p>
+    <form method="POST" action="{{ route('auth.logout')}}">
+
+      {{csrfField()}}
+      <button type="submit"> Logout </button>
+    </form>
+    @else
+
+    <a href="{{ route('auth.register.show')}}"> Register</a>
+    <a href="{{ route('auth.login.show')}}"> Login</a>
+
+
+    @endif
+  </body>
+</html>
