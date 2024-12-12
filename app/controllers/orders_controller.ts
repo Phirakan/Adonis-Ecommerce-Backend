@@ -57,41 +57,44 @@ export default class OrderController {
     }
   }
 
-  // Get all orders
-  public async index({ response }: HttpContext) {
+  
+   // Get all orders with order items and product details
+   public async index({ response }: HttpContext) {
     try {
-      const orders = await Order.query().preload('user').preload('orderItems')
+      const orders = await Order.query()
+        .preload('orderItems', (orderItemsQuery) => {
+          orderItemsQuery.preload('product'); // preload product details with each order item
+        })
+        .orderBy('createdAt', 'desc') // Optional, if you want to sort by date
       return response.status(200).json({
         success: true,
-        data: orders
-      })
+        data: orders,
+      });
     } catch (error) {
       return response.status(500).json({
         success: false,
         message: 'Failed to fetch orders',
-        error: error.message
-      })
+        error: error.message,
+      });
     }
   }
 
-  // Get a single order by ID
+  // Get a specific order by ID with its items and products
   public async show({ params, response }: HttpContext) {
     try {
-      const order = await Order.query()
-        .where('id', params.id)
-        .preload('user') // Preload the user (optional, depending on what you need)
-        .preload('orderItems') // Preload the associated order items
-        .firstOrFail();
-      
+      const order = await Order.findOrFail(params.id)
+      await order.load('orderItems', (orderItemsQuery) => {
+        orderItemsQuery.preload('product') // preload the product details
+      });
       return response.status(200).json({
         success: true,
-        data: order // Send the order object which includes `orderItems`
+        data: order,
       });
     } catch (error) {
       return response.status(404).json({
         success: false,
         message: 'Order not found',
-        error: error.message
+        error: error.message,
       });
     }
   }
@@ -138,27 +141,23 @@ export default class OrderController {
     }
   }
   // Get all orders for a specific user (Order History)
-  public async orderHistory({ auth, response }: HttpContext) {
+  public async orderHistory({ response }: HttpContext) {
     try {
-      await auth.authenticate();
-      const user = auth.user! as { id: number };
-  
       const orders = await Order.query()
-        .where('userId', user.id)
-        .preload('orderItems')
-        .preload('user')
-        .orderBy('created_at', 'desc');
-  
+        .preload('orderItems', (orderItemsQuery) => {
+          orderItemsQuery.preload('product'); // preload ข้อมูลสินค้าในรายการ
+        })
+        .orderBy('createdAt', 'desc') // Optional: สามารถเรียงลำดับตามวันที่
       return response.status(200).json({
         success: true,
         data: orders,
-      });
+      })
     } catch (error) {
       return response.status(500).json({
         success: false,
         message: 'Failed to fetch order history',
         error: error.message,
-      });
+      })
     }
   }
 }
