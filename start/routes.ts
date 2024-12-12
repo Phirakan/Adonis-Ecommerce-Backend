@@ -126,6 +126,7 @@ router.group(() => {
     router.get('orders/:id', [OrderController, 'show'])
     router.put('orders/:id', [OrderController, 'update'])
     router.delete('orders/:id', [OrderController, 'destroy'])
+    router.get('orders-history', [OrderController, 'orderHistory'])
 
     router.post('order-items', [OrderItemController, 'store'])
     router.get('order-items/:orderId', [OrderItemController, 'index'])
