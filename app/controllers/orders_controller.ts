@@ -101,24 +101,44 @@ export default class OrderController {
 
   // Update an existing order
   public async update({ params, request, response }: HttpContext) {
-    const orderData = request.only(['totalAmount', 'orderStatus', 'shippingAddress', 'billingAddress'])
-    
+    const { orderStatus, trackingNumber, courierName } = request.only([
+      'orderStatus', 'trackingNumber', 'courierName'
+    ]);
+
     try {
-      const order = await Order.findOrFail(params.id)
-      order.merge(orderData)
-      await order.save()
-      
+      const order = await Order.findOrFail(params.id);
+
+      // กรณีที่สถานะเป็น "กำลังจัดส่ง" หรือ "พัสดุจัดส่งสำเร็จ"
+      if (orderStatus === 'shipped' || orderStatus === 'delivered') {
+        // ตรวจสอบว่าเลขพัสดุและชื่อขนส่งถูกส่งมาหรือไม่
+        if (!trackingNumber || !courierName) {
+          return response.status(400).json({
+            success: false,
+            message: 'Tracking number and courier name are required when shipping in progress or shipped.'
+          });
+        }
+        order.trackingNumber = trackingNumber; // เก็บเลขพัสดุ
+        order.courierName = courierName; // เก็บชื่อขนส่ง
+      }
+
+      // อัพเดตสถานะของคำสั่งซื้อ
+      order.orderStatus = orderStatus;
+
+      // บันทึกการอัพเดต
+      await order.save();
+
       return response.status(200).json({
         success: true,
-        message: 'Order updated successfully',
-        data: order
-      })
+        message: 'Order status updated successfully',
+        data: order,
+      });
+
     } catch (error) {
       return response.status(500).json({
         success: false,
         message: 'Failed to update order',
-        error: error.message
-      })
+        error: error.message,
+      });
     }
   }
 
