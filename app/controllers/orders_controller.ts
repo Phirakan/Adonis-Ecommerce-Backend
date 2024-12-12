@@ -109,7 +109,7 @@ export default class OrderController {
       const order = await Order.findOrFail(params.id);
 
       // กรณีที่สถานะเป็น "กำลังจัดส่ง" หรือ "พัสดุจัดส่งสำเร็จ"
-      if (orderStatus === 'shipped' || orderStatus === 'delivered') {
+      if (orderStatus === 'shipped') {
         // ตรวจสอบว่าเลขพัสดุและชื่อขนส่งถูกส่งมาหรือไม่
         if (!trackingNumber || !courierName) {
           return response.status(400).json({
@@ -132,7 +132,6 @@ export default class OrderController {
         message: 'Order status updated successfully',
         data: order,
       });
-
     } catch (error) {
       return response.status(500).json({
         success: false,
