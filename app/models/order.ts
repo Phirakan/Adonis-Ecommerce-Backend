@@ -3,7 +3,7 @@ import {
   column, 
   BaseModel, 
   belongsTo, 
-  hasMany
+  hasMany 
 } from '@adonisjs/lucid/orm'
 
 // Import the correct types for relationships
@@ -37,6 +37,13 @@ export default class Order extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime
+
+  // New columns for tracking information
+  @column()
+  declare trackingNumber: string | null  // ใช้ null เพื่อให้สามารถเป็นค่าไม่ได้ (nullable)
+
+  @column()
+  declare courierName: string | null  // ใช้ null เพื่อให้สามารถเป็นค่าไม่ได้ (nullable)
 
   // Define the relationship to the User model
   @belongsTo(() => User)
