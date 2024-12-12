@@ -77,17 +77,22 @@ export default class OrderController {
   // Get a single order by ID
   public async show({ params, response }: HttpContext) {
     try {
-      const order = await Order.query().where('id', params.id).preload('user').preload('orderItems').firstOrFail()
+      const order = await Order.query()
+        .where('id', params.id)
+        .preload('user') // Preload the user (optional, depending on what you need)
+        .preload('orderItems') // Preload the associated order items
+        .firstOrFail();
+      
       return response.status(200).json({
         success: true,
-        data: order
-      })
+        data: order // Send the order object which includes `orderItems`
+      });
     } catch (error) {
       return response.status(404).json({
         success: false,
         message: 'Order not found',
         error: error.message
-      })
+      });
     }
   }
 
@@ -130,6 +135,30 @@ export default class OrderController {
         message: 'Failed to delete order',
         error: error.message
       })
+    }
+  }
+  // Get all orders for a specific user (Order History)
+  public async orderHistory({ auth, response }: HttpContext) {
+    try {
+      await auth.authenticate();
+      const user = auth.user! as { id: number };
+  
+      const orders = await Order.query()
+        .where('userId', user.id)
+        .preload('orderItems')
+        .preload('user')
+        .orderBy('created_at', 'desc');
+  
+      return response.status(200).json({
+        success: true,
+        data: orders,
+      });
+    } catch (error) {
+      return response.status(500).json({
+        success: false,
+        message: 'Failed to fetch order history',
+        error: error.message,
+      });
     }
   }
 }
