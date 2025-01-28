@@ -1,15 +1,13 @@
-export default {
-  enabled: true,
-  origin: true,
+import { http } from "./app.js";
+
+const corsConfig = {
+  enabled: true, 
+  origin: "http://localhost:3000",
   methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  headers: true,
-  exposeHeaders: [
-    'cache-control',
-    'content-language',
-    'content-type',
-    'expires',
-    'last-modified',
-    'pragma'
-  ],
-  credentials: true
-}
+  headers: true, 
+  exposeHeaders: [],
+  credentials: true,
+  maxAge: 90,
+};
+
+export default corsConfig;
