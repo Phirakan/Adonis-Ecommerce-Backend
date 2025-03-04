@@ -167,26 +167,34 @@ export default class OrderController {
   public async orderHistory({ auth, response }: HttpContext) {
     try {
       await auth.authenticate()
-      const user = auth.user! as { id: number; role: string } // ดึง role ของ user
+      const user = auth.user!
+
+      // Check if the user is an admin
+      const isAdmin = user.role === 'admin'
 
       let ordersQuery = Order.query()
         .preload('orderItems', (orderItemsQuery) => {
-          orderItemsQuery.preload('product') // preload ข้อมูลสินค้าในรายการ
+          orderItemsQuery.preload('product')
         })
-        .orderBy('createdAt', 'desc') // เรียงตามวันที่ล่าสุดก่อน
+        .orderBy('createdAt', 'desc')
 
-      if (user.role !== 'admin') {
-        // ถ้าไม่ใช่ admin ให้กรองเฉพาะของ user คนนั้น
-        ordersQuery = ordersQuery.where('userId', user.id)
+      if (isAdmin) {
+        // If admin, load orders with user details
+        ordersQuery = ordersQuery.preload('user', (userQuery) => {
+          userQuery.select(['id'])
+        })
       } else {
-        // ถ้าเป็น admin preload user ที่สั่งซื้อด้วย
-        ordersQuery = ordersQuery.preload('user')
+        // If not admin, only load user's own orders
+        ordersQuery = ordersQuery.where('userId', user.id).preload('user', (userQuery) => {
+          userQuery.select(['id'])
+        })
       }
 
       const orders = await ordersQuery
 
       return response.status(200).json({
         success: true,
+        isAdmin,
         data: orders,
       })
     } catch (error) {
