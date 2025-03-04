@@ -1,81 +1,82 @@
 import { HttpContext } from '@adonisjs/core/http'
 import Order from '#models/order'
 import OrderItem from '#models/order_item'
-import Cart from '#models/cart';
-
+import Cart from '#models/cart'
 
 export default class OrderController {
   // Create a new order
   public async store({ request, auth, response }: HttpContext) {
     try {
-      await auth.authenticate();
-      const user = auth.user! as { id: number };
+      await auth.authenticate()
+      const user = auth.user! as { id: number }
       const { totalAmount, orderStatus, shippingAddress, billingAddress } = request.only([
-        'totalAmount', 'orderStatus', 'shippingAddress', 'billingAddress'
-      ]);
-  
-      const cartItems = await Cart.query().where('userId', user.id).preload('product');
+        'totalAmount',
+        'orderStatus',
+        'shippingAddress',
+        'billingAddress',
+      ])
+
+      const cartItems = await Cart.query().where('userId', user.id).preload('product')
       if (cartItems.length === 0) {
         return response.status(400).json({
           success: false,
-          message: 'Cart is empty. Please add items to the cart.'
-        });
+          message: 'Cart is empty. Please add items to the cart.',
+        })
       }
-  
+
       const order = await Order.create({
         userId: user.id,
         totalAmount,
         orderStatus,
         shippingAddress,
-        billingAddress
-      });
-  
+        billingAddress,
+      })
+
       // Save the order items (cart items)
       for (let item of cartItems) {
         await OrderItem.create({
           orderId: order.id,
           productId: item.productId,
           quantity: item.quantity,
-          priceAtTime: item.product.price // Use the price from the associated product
-        });
+          priceAtTime: item.product.price, // Use the price from the associated product
+        })
       }
-  
+
       // Clear the user's cart after placing the order
-      await Cart.query().where('userId', user.id).delete();
-  
+      await Cart.query().where('userId', user.id).delete()
+
       return response.status(201).json({
         success: true,
         message: 'Order placed successfully',
-        data: order
-      });
+        data: order,
+      })
     } catch (error) {
       return response.status(500).json({
         success: false,
         message: 'Failed to create order',
-        error: error.message
-      });
+        error: error.message,
+      })
     }
   }
 
-  
-   // Get all orders with order items and product details
-   public async index({ response }: HttpContext) {
+  // Get all orders with order items and product details
+  public async index({ response }: HttpContext) {
     try {
       const orders = await Order.query()
         .preload('orderItems', (orderItemsQuery) => {
-          orderItemsQuery.preload('product'); // preload product details with each order item
+          orderItemsQuery.preload('product') // preload product details with each order item
         })
         .orderBy('createdAt', 'desc') // Optional, if you want to sort by date
       return response.status(200).json({
         success: true,
         data: orders,
-      });
+      })
     } catch (error) {
       return response.status(500).json({
         success: false,
         message: 'Failed to fetch orders',
         error: error.message,
-      });
+      })
     }
   }
 
@@ -85,28 +86,30 @@ export default class OrderController {
       const order = await Order.findOrFail(params.id)
       await order.load('orderItems', (orderItemsQuery) => {
         orderItemsQuery.preload('product') // preload the product details
-      });
+      })
       return response.status(200).json({
         success: true,
         data: order,
-      });
+      })
     } catch (error) {
       return response.status(404).json({
         success: false,
         message: 'Order not found',
         error: error.message,
-      });
+      })
     }
   }
 
   // Update an existing order
   public async update({ params, request, response }: HttpContext) {
     const { orderStatus, trackingNumber, courierName } = request.only([
-      'orderStatus', 'trackingNumber', 'courierName'
-    ]);
+      'orderStatus',
+      'trackingNumber',
+      'courierName',
+    ])
 
     try {
-      const order = await Order.findOrFail(params.id);
+      const order = await Order.findOrFail(params.id)
 
       // กรณีที่สถานะเป็น "กำลังจัดส่ง" หรือ "พัสดุจัดส่งสำเร็จ"
       if (orderStatus === 'shipped') {
@@ -114,30 +117,31 @@ export default class OrderController {
         if (!trackingNumber || !courierName) {
           return response.status(400).json({
             success: false,
-            message: 'Tracking number and courier name are required when shipping in progress or shipped.'
-          });
+            message:
+              'Tracking number and courier name are required when shipping in progress or shipped.',
+          })
         }
-        order.trackingNumber = trackingNumber; // เก็บเลขพัสดุ
-        order.courierName = courierName; // เก็บชื่อขนส่ง
+        order.trackingNumber = trackingNumber // เก็บเลขพัสดุ
+        order.courierName = courierName // เก็บชื่อขนส่ง
       }
 
       // อัพเดตสถานะของคำสั่งซื้อ
-      order.orderStatus = orderStatus;
+      order.orderStatus = orderStatus
 
       // บันทึกการอัพเดต
-      await order.save();
+      await order.save()
 
       return response.status(200).json({
         success: true,
         message: 'Order status updated successfully',
         data: order,
-      });
+      })
     } catch (error) {
       return response.status(500).json({
         success: false,
         message: 'Failed to update order',
         error: error.message,
-      });
+      })
     }
   }
 
@@ -146,27 +150,41 @@ export default class OrderController {
     try {
       const order = await Order.findOrFail(params.id)
       await order.delete()
-      
+
       return response.status(200).json({
         success: true,
-        message: 'Order deleted successfully'
+        message: 'Order deleted successfully',
       })
     } catch (error) {
       return response.status(500).json({
         success: false,
         message: 'Failed to delete order',
-        error: error.message
+        error: error.message,
       })
     }
   }
   // Get all orders for a specific user (Order History)
-  public async orderHistory({ response }: HttpContext) {
+  public async orderHistory({ auth, response }: HttpContext) {
     try {
-      const orders = await Order.query()
+      await auth.authenticate()
+      const user = auth.user! as { id: number; role: string } // ดึง role ของ user
+
+      let ordersQuery = Order.query()
         .preload('orderItems', (orderItemsQuery) => {
-          orderItemsQuery.preload('product'); // preload ข้อมูลสินค้าในรายการ
+          orderItemsQuery.preload('product') // preload ข้อมูลสินค้าในรายการ
         })
-        .orderBy('createdAt', 'desc') // Optional: สามารถเรียงลำดับตามวันที่
+        .orderBy('createdAt', 'desc') // เรียงตามวันที่ล่าสุดก่อน
+
+      if (user.role !== 'admin') {
+        // ถ้าไม่ใช่ admin ให้กรองเฉพาะของ user คนนั้น
+        ordersQuery = ordersQuery.where('userId', user.id)
+      } else {
+        // ถ้าเป็น admin preload user ที่สั่งซื้อด้วย
+        ordersQuery = ordersQuery.preload('user')
+      }
+
+      const orders = await ordersQuery
+
       return response.status(200).json({
         success: true,
         data: orders,
