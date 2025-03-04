@@ -26,47 +26,44 @@ export default class AuthController {
         isCustomer,
         token,
       },
-    
     })
   }
 
   async login({ request, response }: HttpContext) {
-   try{
-    const { email, password } = await request.validateUsing(loginValidator)
+    try {
+      const { email, password } = await request.validateUsing(loginValidator)
 
-    const user = await User.verifyCredentials(email, password)
+      const user = await User.verifyCredentials(email, password)
 
-    // ตรวจสอบ role ของผู้ใช้
-    const isAdmin = user.role === 'admin'
-    const isCustomer = user.role === 'customer'
+      const isAdmin = user.role === 'admin'
+      const isCustomer = user.role === 'customer'
 
-    // สร้าง API token
-    const token = await User.accessTokens.create(user)
+      // สร้าง API token
+      const token = await User.accessTokens.create(user)
 
-    console.log(token)
+      console.log(token)
 
-    // ส่งข้อมูลผู้ใช้และ token
-    return response.json({
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        isAdmin,
-        isCustomer,
-        token,
-      },
-     
-    })
-   }catch(error){
-     return response.badRequest('Invalid email or password')
-   }
+      // ส่งข้อมูลผู้ใช้และ token
+      return response.json({
+        message: 'Login successful',
+        user: {
+          id: user.id,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          isAdmin,
+          isCustomer,
+          token,
+        },
+      })
+    } catch (error) {
+      return response.badRequest('Invalid email or password')
+    }
   }
 
   async logout({ auth, response }: HttpContext) {
     const user = auth.user! as User
-    
+
     // ลบ token ของผู้ใช้
     await User.accessTokens.delete(user, user.currentAccessToken.identifier)
 
@@ -79,7 +76,7 @@ export default class AuthController {
     await auth.check()
 
     const user = auth.user! as User
-    
+
     // ตรวจสอบ role ของผู้ใช้
     const isAdmin = user.role === 'admin'
     const isCustomer = user.role === 'customer'
